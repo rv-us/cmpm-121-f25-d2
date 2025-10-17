@@ -16,12 +16,21 @@ const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 document.body.appendChild(clearButton);
 
+const undoButton = document.createElement("button");
+undoButton.textContent = "Undo";
+document.body.appendChild(undoButton);
+
+const redoButton = document.createElement("button");
+redoButton.textContent = "Redo";
+document.body.appendChild(redoButton);
+
 const ctx = canvas.getContext("2d")!;
 
 type Point = { x: number; y: number };
 type Stroke = Point[];
 
 const strokes: Stroke[] = [];
+const redoStack: Stroke[] = [];
 let isDrawing = false;
 
 function getCanvasPosition(event: MouseEvent): Point {
@@ -33,10 +42,17 @@ function dispatchDrawingChanged() {
   canvas.dispatchEvent(new Event("drawing-changed"));
 }
 
+function updateButtonStates() {
+  undoButton.disabled = strokes.length === 0;
+  redoButton.disabled = redoStack.length === 0;
+}
+
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   const startPoint = getCanvasPosition(event);
   strokes.push([startPoint]);
+  // Starting a new stroke invalidates redo history
+  redoStack.length = 0;
   dispatchDrawingChanged();
 });
 
@@ -78,9 +94,26 @@ canvas.addEventListener("drawing-changed", () => {
     }
     ctx.stroke();
   }
+
+  updateButtonStates();
 });
 
 clearButton.addEventListener("click", () => {
   strokes.length = 0;
+  redoStack.length = 0;
+  dispatchDrawingChanged();
+});
+
+undoButton.addEventListener("click", () => {
+  if (strokes.length === 0) return;
+  const undone = strokes.pop()!;
+  redoStack.push(undone);
+  dispatchDrawingChanged();
+});
+
+redoButton.addEventListener("click", () => {
+  if (redoStack.length === 0) return;
+  const redone = redoStack.pop()!;
+  strokes.push(redone);
   dispatchDrawingChanged();
 });
