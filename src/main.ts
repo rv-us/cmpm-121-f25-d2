@@ -1,6 +1,13 @@
-import exampleIconUrl from "./noun-paperclip-7598668-00449F.png";
 import "./style.css";
 
-document.body.innerHTML = `
-  <p>Example image asset: <img src="${exampleIconUrl}" class="icon" /></p>
-`;
+const appTitle = "Drawing App";
+
+const title = document.createElement("h1");
+title.textContent = appTitle;
+document.body.appendChild(title);
+
+const canvas = document.createElement("canvas");
+canvas.width = 256;
+canvas.height = 256;
+canvas.id = "drawingCanvas";
+document.body.appendChild(canvas);
