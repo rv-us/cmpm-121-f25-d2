@@ -24,6 +24,14 @@ const redoButton = document.createElement("button");
 redoButton.textContent = "Redo";
 document.body.appendChild(redoButton);
 
+const thinToolButton = document.createElement("button");
+thinToolButton.textContent = "Thin";
+document.body.appendChild(thinToolButton);
+
+const thickToolButton = document.createElement("button");
+thickToolButton.textContent = "Thick";
+document.body.appendChild(thickToolButton);
+
 const ctx = canvas.getContext("2d")!;
 
 type Point = { x: number; y: number };
@@ -34,9 +42,11 @@ interface DisplayCommand {
 
 class MarkerStroke implements DisplayCommand {
   private readonly points: Point[] = [];
+  private readonly thickness: number;
 
-  constructor(start: Point) {
+  constructor(start: Point, thickness: number) {
     this.points.push(start);
+    this.thickness = thickness;
   }
 
   drag(next: Point): void {
@@ -45,7 +55,7 @@ class MarkerStroke implements DisplayCommand {
 
   display(ctx: CanvasRenderingContext2D): void {
     if (this.points.length === 0) return;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = this.thickness;
     ctx.lineCap = "round";
     ctx.strokeStyle = "black";
 
@@ -66,6 +76,15 @@ const strokes: DisplayCommand[] = [];
 const redoStack: DisplayCommand[] = [];
 let isDrawing = false;
 
+const THIN = 2;
+const THICK = 6;
+let currentThickness = THIN;
+
+function updateToolSelection() {
+  thinToolButton.classList.toggle("selectedTool", currentThickness === THIN);
+  thickToolButton.classList.toggle("selectedTool", currentThickness === THICK);
+}
+
 function getCanvasPosition(event: MouseEvent): Point {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
@@ -80,10 +99,20 @@ function updateButtonStates() {
   redoButton.disabled = redoStack.length === 0;
 }
 
+thinToolButton.addEventListener("click", () => {
+  currentThickness = THIN;
+  updateToolSelection();
+});
+
+thickToolButton.addEventListener("click", () => {
+  currentThickness = THICK;
+  updateToolSelection();
+});
+
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   const startPoint = getCanvasPosition(event);
-  const stroke = new MarkerStroke(startPoint);
+  const stroke = new MarkerStroke(startPoint, currentThickness);
   strokes.push(stroke);
   // Starting a new stroke invalidates redo history
   redoStack.length = 0;
@@ -113,6 +142,7 @@ canvas.addEventListener("drawing-changed", () => {
     command.display(ctx);
   }
   updateButtonStates();
+  updateToolSelection();
 });
 
 clearButton.addEventListener("click", () => {

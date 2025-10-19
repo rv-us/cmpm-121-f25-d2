@@ -35,3 +35,8 @@ button {
 button:hover {
   background-color: #f0f0f0;
 }
+
+.selectedTool {
+  background-color: #333;
+  color: white;
+}
