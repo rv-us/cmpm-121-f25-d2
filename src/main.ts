@@ -27,10 +27,43 @@ document.body.appendChild(redoButton);
 const ctx = canvas.getContext("2d")!;
 
 type Point = { x: number; y: number };
-type Stroke = Point[];
 
-const strokes: Stroke[] = [];
-const redoStack: Stroke[] = [];
+interface DisplayCommand {
+  display(ctx: CanvasRenderingContext2D): void;
+}
+
+class MarkerStroke implements DisplayCommand {
+  private readonly points: Point[] = [];
+
+  constructor(start: Point) {
+    this.points.push(start);
+  }
+
+  drag(next: Point): void {
+    this.points.push(next);
+  }
+
+  display(ctx: CanvasRenderingContext2D): void {
+    if (this.points.length === 0) return;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "black";
+
+    ctx.beginPath();
+    const [first, ...rest] = this.points;
+    ctx.moveTo(first.x, first.y);
+    for (const p of rest) {
+      ctx.lineTo(p.x, p.y);
+    }
+    if (this.points.length === 1) {
+      ctx.lineTo(first.x + 0.01, first.y + 0.01);
+    }
+    ctx.stroke();
+  }
+}
+
+const strokes: DisplayCommand[] = [];
+const redoStack: DisplayCommand[] = [];
 let isDrawing = false;
 
 function getCanvasPosition(event: MouseEvent): Point {
@@ -50,7 +83,8 @@ function updateButtonStates() {
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   const startPoint = getCanvasPosition(event);
-  strokes.push([startPoint]);
+  const stroke = new MarkerStroke(startPoint);
+  strokes.push(stroke);
   // Starting a new stroke invalidates redo history
   redoStack.length = 0;
   dispatchDrawingChanged();
@@ -67,34 +101,17 @@ canvas.addEventListener("mouseleave", () => {
 canvas.addEventListener("mousemove", (event) => {
   if (!isDrawing) return;
   const point = getCanvasPosition(event);
-  const currentStroke = strokes[strokes.length - 1];
+  const currentStroke = strokes[strokes.length - 1] as MarkerStroke | undefined;
   if (!currentStroke) return;
-  currentStroke.push(point);
+  currentStroke.drag(point);
   dispatchDrawingChanged();
 });
 
 canvas.addEventListener("drawing-changed", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "black";
-
-  for (const stroke of strokes) {
-    if (stroke.length === 0) continue;
-    ctx.beginPath();
-    const [first, ...rest] = stroke;
-    ctx.moveTo(first.x, first.y);
-    for (const p of rest) {
-      ctx.lineTo(p.x, p.y);
-    }
-    // If the stroke is a single point, draw a tiny dot
-    if (stroke.length === 1) {
-      ctx.lineTo(first.x + 0.01, first.y + 0.01);
-    }
-    ctx.stroke();
+  for (const command of strokes) {
+    command.display(ctx);
   }
-
   updateButtonStates();
 });
 
