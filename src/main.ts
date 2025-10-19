@@ -191,9 +191,9 @@ canvas.addEventListener("mouseleave", () => {
 canvas.addEventListener("mousemove", (event) => {
   const point = getCanvasPosition(event);
   if (isDrawing) {
-    const currentStroke = strokes[strokes.length - 1] as MarkerStroke | undefined;
-    if (!currentStroke) return;
-    currentStroke.drag(point);
+    const lastCommand = strokes[strokes.length - 1];
+    if (!(lastCommand instanceof MarkerStroke)) return;
+    lastCommand.drag(point);
     dispatchDrawingChanged();
   } else {
     if (!preview) {
