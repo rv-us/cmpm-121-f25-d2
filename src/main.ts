@@ -76,6 +76,42 @@ const strokes: DisplayCommand[] = [];
 const redoStack: DisplayCommand[] = [];
 let isDrawing = false;
 
+// --- Tool Preview Types ---
+interface ToolPreview {
+  draw(ctx: CanvasRenderingContext2D): void;
+}
+
+class MarkerPreview implements ToolPreview {
+  private center: Point;
+  private thickness: number;
+
+  constructor(center: Point, thickness: number) {
+    this.center = center;
+    this.thickness = thickness;
+  }
+
+  setPosition(center: Point) {
+    this.center = center;
+  }
+
+  setThickness(thickness: number) {
+    this.thickness = thickness;
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = "#666";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(this.center.x, this.center.y, this.thickness / 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+let preview: MarkerPreview | null = null;
+
 const THIN = 2;
 const THICK = 6;
 let currentThickness = THIN;
@@ -99,14 +135,34 @@ function updateButtonStates() {
   redoButton.disabled = redoStack.length === 0;
 }
 
+function dispatchToolMoved() {
+  canvas.dispatchEvent(new Event("tool-moved"));
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const command of strokes) {
+    command.display(ctx);
+  }
+  if (!isDrawing && preview) {
+    preview.draw(ctx);
+  }
+  updateButtonStates();
+  updateToolSelection();
+}
+
 thinToolButton.addEventListener("click", () => {
   currentThickness = THIN;
+  if (preview) preview.setThickness(currentThickness);
   updateToolSelection();
+  dispatchToolMoved();
 });
 
 thickToolButton.addEventListener("click", () => {
   currentThickness = THICK;
+  if (preview) preview.setThickness(currentThickness);
   updateToolSelection();
+  dispatchToolMoved();
 });
 
 canvas.addEventListener("mousedown", (event) => {
@@ -116,34 +172,42 @@ canvas.addEventListener("mousedown", (event) => {
   strokes.push(stroke);
   // Starting a new stroke invalidates redo history
   redoStack.length = 0;
+  preview = null; // hide preview while drawing
   dispatchDrawingChanged();
+  dispatchToolMoved();
 });
 
 canvas.addEventListener("mouseup", () => {
   isDrawing = false;
+  dispatchToolMoved();
 });
 
 canvas.addEventListener("mouseleave", () => {
   isDrawing = false;
+  preview = null;
+  dispatchToolMoved();
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  if (!isDrawing) return;
   const point = getCanvasPosition(event);
-  const currentStroke = strokes[strokes.length - 1] as MarkerStroke | undefined;
-  if (!currentStroke) return;
-  currentStroke.drag(point);
-  dispatchDrawingChanged();
+  if (isDrawing) {
+    const currentStroke = strokes[strokes.length - 1] as MarkerStroke | undefined;
+    if (!currentStroke) return;
+    currentStroke.drag(point);
+    dispatchDrawingChanged();
+  } else {
+    if (!preview) {
+      preview = new MarkerPreview(point, currentThickness);
+    } else {
+      preview.setPosition(point);
+      preview.setThickness(currentThickness);
+    }
+  }
+  dispatchToolMoved();
 });
 
-canvas.addEventListener("drawing-changed", () => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const command of strokes) {
-    command.display(ctx);
-  }
-  updateButtonStates();
-  updateToolSelection();
-});
+canvas.addEventListener("drawing-changed", render);
+canvas.addEventListener("tool-moved", render);
 
 clearButton.addEventListener("click", () => {
   strokes.length = 0;
