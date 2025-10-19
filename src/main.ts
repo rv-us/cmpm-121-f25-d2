@@ -297,7 +297,11 @@ canvas.addEventListener("mousedown", (event) => {
     const stroke = new MarkerStroke(startPoint, currentThickness);
     strokes.push(stroke);
   } else {
-    const sticker = new StickerCommand(startPoint, currentSticker, STICKER_FONT_PX);
+    const sticker = new StickerCommand(
+      startPoint,
+      currentSticker,
+      STICKER_FONT_PX,
+    );
     strokes.push(sticker);
   }
   dispatchDrawingChanged();
