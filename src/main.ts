@@ -32,6 +32,19 @@ const thickToolButton = document.createElement("button");
 thickToolButton.textContent = "Thick";
 document.body.appendChild(thickToolButton);
 
+// Sticker tool buttons
+const stickerSmileButton = document.createElement("button");
+stickerSmileButton.textContent = "😀";
+document.body.appendChild(stickerSmileButton);
+
+const stickerStarButton = document.createElement("button");
+stickerStarButton.textContent = "⭐";
+document.body.appendChild(stickerStarButton);
+
+const stickerHeartButton = document.createElement("button");
+stickerHeartButton.textContent = "❤️";
+document.body.appendChild(stickerHeartButton);
+
 const ctx = canvas.getContext("2d")!;
 
 type Point = { x: number; y: number };
@@ -110,15 +123,100 @@ class MarkerPreview implements ToolPreview {
   }
 }
 
-let preview: MarkerPreview | null = null;
+let preview: ToolPreview | null = null;
+
+// Sticker preview
+class StickerPreview implements ToolPreview {
+  private center: Point;
+  private emoji: string;
+  private fontPx: number;
+
+  constructor(center: Point, emoji: string, fontPx: number) {
+    this.center = center;
+    this.emoji = emoji;
+    this.fontPx = fontPx;
+  }
+
+  setPosition(center: Point) {
+    this.center = center;
+  }
+
+  setEmoji(emoji: string) {
+    this.emoji = emoji;
+  }
+
+  setFontPx(fontPx: number) {
+    this.fontPx = fontPx;
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.font = `${this.fontPx}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.emoji, this.center.x, this.center.y);
+    ctx.restore();
+  }
+}
+
+// Sticker drawing command
+class StickerCommand implements DisplayCommand {
+  private center: Point;
+  private readonly emoji: string;
+  private readonly fontPx: number;
+
+  constructor(center: Point, emoji: string, fontPx: number) {
+    this.center = center;
+    this.emoji = emoji;
+    this.fontPx = fontPx;
+  }
+
+  setPosition(center: Point) {
+    this.center = center;
+  }
+
+  display(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.font = `${this.fontPx}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.emoji, this.center.x, this.center.y);
+    ctx.restore();
+  }
+}
 
 const THIN = 2;
 const THICK = 6;
 let currentThickness = THIN;
 
+type ToolMode = "marker" | "sticker";
+let currentToolMode: ToolMode = "marker";
+let currentSticker = "⭐";
+const STICKER_FONT_PX = 28;
+
 function updateToolSelection() {
-  thinToolButton.classList.toggle("selectedTool", currentThickness === THIN);
-  thickToolButton.classList.toggle("selectedTool", currentThickness === THICK);
+  const isMarker = currentToolMode === "marker";
+  thinToolButton.classList.toggle(
+    "selectedTool",
+    isMarker && currentThickness === THIN,
+  );
+  thickToolButton.classList.toggle(
+    "selectedTool",
+    isMarker && currentThickness === THICK,
+  );
+  stickerSmileButton.classList.toggle(
+    "selectedTool",
+    !isMarker && currentSticker === "😀",
+  );
+  stickerStarButton.classList.toggle(
+    "selectedTool",
+    !isMarker && currentSticker === "⭐",
+  );
+  stickerHeartButton.classList.toggle(
+    "selectedTool",
+    !isMarker && currentSticker === "❤️",
+  );
 }
 
 function getCanvasPosition(event: MouseEvent): Point {
@@ -152,15 +250,39 @@ function render() {
 }
 
 thinToolButton.addEventListener("click", () => {
+  currentToolMode = "marker";
   currentThickness = THIN;
-  if (preview) preview.setThickness(currentThickness);
+  if (preview instanceof MarkerPreview) preview.setThickness(currentThickness);
   updateToolSelection();
   dispatchToolMoved();
 });
 
 thickToolButton.addEventListener("click", () => {
+  currentToolMode = "marker";
   currentThickness = THICK;
-  if (preview) preview.setThickness(currentThickness);
+  if (preview instanceof MarkerPreview) preview.setThickness(currentThickness);
+  updateToolSelection();
+  dispatchToolMoved();
+});
+
+// Sticker tool button handlers
+stickerSmileButton.addEventListener("click", () => {
+  currentToolMode = "sticker";
+  currentSticker = "😀";
+  updateToolSelection();
+  dispatchToolMoved();
+});
+
+stickerStarButton.addEventListener("click", () => {
+  currentToolMode = "sticker";
+  currentSticker = "⭐";
+  updateToolSelection();
+  dispatchToolMoved();
+});
+
+stickerHeartButton.addEventListener("click", () => {
+  currentToolMode = "sticker";
+  currentSticker = "❤️";
   updateToolSelection();
   dispatchToolMoved();
 });
@@ -168,11 +290,16 @@ thickToolButton.addEventListener("click", () => {
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   const startPoint = getCanvasPosition(event);
-  const stroke = new MarkerStroke(startPoint, currentThickness);
-  strokes.push(stroke);
-  // Starting a new stroke invalidates redo history
+  // Starting a new element invalidates redo history
   redoStack.length = 0;
   preview = null; // hide preview while drawing
+  if (currentToolMode === "marker") {
+    const stroke = new MarkerStroke(startPoint, currentThickness);
+    strokes.push(stroke);
+  } else {
+    const sticker = new StickerCommand(startPoint, currentSticker, STICKER_FONT_PX);
+    strokes.push(sticker);
+  }
   dispatchDrawingChanged();
   dispatchToolMoved();
 });
@@ -192,15 +319,32 @@ canvas.addEventListener("mousemove", (event) => {
   const point = getCanvasPosition(event);
   if (isDrawing) {
     const lastCommand = strokes[strokes.length - 1];
-    if (!(lastCommand instanceof MarkerStroke)) return;
-    lastCommand.drag(point);
+    if (currentToolMode === "marker") {
+      if (lastCommand instanceof MarkerStroke) {
+        lastCommand.drag(point);
+      }
+    } else {
+      if (lastCommand instanceof StickerCommand) {
+        lastCommand.setPosition(point);
+      }
+    }
     dispatchDrawingChanged();
   } else {
-    if (!preview) {
-      preview = new MarkerPreview(point, currentThickness);
+    if (currentToolMode === "marker") {
+      if (!(preview instanceof MarkerPreview)) {
+        preview = new MarkerPreview(point, currentThickness);
+      } else {
+        preview.setPosition(point);
+        preview.setThickness(currentThickness);
+      }
     } else {
-      preview.setPosition(point);
-      preview.setThickness(currentThickness);
+      if (!(preview instanceof StickerPreview)) {
+        preview = new StickerPreview(point, currentSticker, STICKER_FONT_PX);
+      } else {
+        preview.setPosition(point);
+        (preview as StickerPreview).setEmoji(currentSticker);
+        (preview as StickerPreview).setFontPx(STICKER_FONT_PX);
+      }
     }
   }
   dispatchToolMoved();
