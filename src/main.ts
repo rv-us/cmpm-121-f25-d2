@@ -39,6 +39,10 @@ const customStickerButton = document.createElement("button");
 customStickerButton.textContent = "+ Custom";
 document.body.appendChild(customStickerButton);
 
+const exportButton = document.createElement("button");
+exportButton.textContent = "Export";
+document.body.appendChild(exportButton);
+
 const ctx = canvas.getContext("2d")!;
 
 type Point = { x: number; y: number };
@@ -282,6 +286,24 @@ customStickerButton.addEventListener("click", () => {
   currentSticker = text;
   updateToolSelection();
   dispatchToolMoved();
+});
+
+exportButton.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportCtx = exportCanvas.getContext("2d")!;
+
+  exportCtx.scale(4, 4);
+
+  for (const command of strokes) {
+    command.display(exportCtx);
+  }
+
+  const anchor = document.createElement("a");
+  anchor.href = exportCanvas.toDataURL("image/png");
+  anchor.download = "sketchpad.png";
+  anchor.click();
 });
 
 canvas.addEventListener("mousedown", (event) => {
