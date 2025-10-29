@@ -32,18 +32,12 @@ const thickToolButton = document.createElement("button");
 thickToolButton.textContent = "Thick";
 document.body.appendChild(thickToolButton);
 
-// Sticker tool buttons
-const stickerSmileButton = document.createElement("button");
-stickerSmileButton.textContent = "😀";
-document.body.appendChild(stickerSmileButton);
+const stickers = ["😀", "⭐", "❤️"];
+const stickerButtons = new Map<string, HTMLButtonElement>();
 
-const stickerStarButton = document.createElement("button");
-stickerStarButton.textContent = "⭐";
-document.body.appendChild(stickerStarButton);
-
-const stickerHeartButton = document.createElement("button");
-stickerHeartButton.textContent = "❤️";
-document.body.appendChild(stickerHeartButton);
+const customStickerButton = document.createElement("button");
+customStickerButton.textContent = "+ Custom";
+document.body.appendChild(customStickerButton);
 
 const ctx = canvas.getContext("2d")!;
 
@@ -205,18 +199,9 @@ function updateToolSelection() {
     "selectedTool",
     isMarker && currentThickness === THICK,
   );
-  stickerSmileButton.classList.toggle(
-    "selectedTool",
-    !isMarker && currentSticker === "😀",
-  );
-  stickerStarButton.classList.toggle(
-    "selectedTool",
-    !isMarker && currentSticker === "⭐",
-  );
-  stickerHeartButton.classList.toggle(
-    "selectedTool",
-    !isMarker && currentSticker === "❤️",
-  );
+  for (const [emoji, button] of stickerButtons) {
+    button.classList.toggle("selectedTool", !isMarker && currentSticker === emoji);
+  }
 }
 
 function getCanvasPosition(event: MouseEvent): Point {
@@ -235,6 +220,25 @@ function updateButtonStates() {
 
 function dispatchToolMoved() {
   canvas.dispatchEvent(new Event("tool-moved"));
+}
+
+function createStickerButton(emoji: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.textContent = emoji;
+  button.addEventListener("click", () => {
+    currentToolMode = "sticker";
+    currentSticker = emoji;
+    updateToolSelection();
+    dispatchToolMoved();
+  });
+  document.body.appendChild(button);
+  stickerButtons.set(emoji, button);
+  return button;
+}
+
+// Initialize sticker buttons
+for (const sticker of stickers) {
+  createStickerButton(sticker);
 }
 
 function render() {
@@ -265,24 +269,14 @@ thickToolButton.addEventListener("click", () => {
   dispatchToolMoved();
 });
 
-// Sticker tool button handlers
-stickerSmileButton.addEventListener("click", () => {
+customStickerButton.addEventListener("click", () => {
+  const text = prompt("Custom sticker text", "🧽");
+  if (text === null || text === "") return;
+  if (stickers.includes(text)) return;
+  stickers.push(text);
+  createStickerButton(text);
   currentToolMode = "sticker";
-  currentSticker = "😀";
-  updateToolSelection();
-  dispatchToolMoved();
-});
-
-stickerStarButton.addEventListener("click", () => {
-  currentToolMode = "sticker";
-  currentSticker = "⭐";
-  updateToolSelection();
-  dispatchToolMoved();
-});
-
-stickerHeartButton.addEventListener("click", () => {
-  currentToolMode = "sticker";
-  currentSticker = "❤️";
+  currentSticker = text;
   updateToolSelection();
   dispatchToolMoved();
 });
