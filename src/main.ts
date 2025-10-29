@@ -1,6 +1,6 @@
 import "./style.css";
 
-const appTitle = "Drawing App";
+const appTitle = "✨ Sketchpad ✨";
 
 const title = document.createElement("h1");
 title.textContent = appTitle;
@@ -25,18 +25,18 @@ redoButton.textContent = "Redo";
 document.body.appendChild(redoButton);
 
 const thinToolButton = document.createElement("button");
-thinToolButton.textContent = "Thin";
+thinToolButton.textContent = "Fine";
 document.body.appendChild(thinToolButton);
 
 const thickToolButton = document.createElement("button");
-thickToolButton.textContent = "Thick";
+thickToolButton.textContent = "Bold";
 document.body.appendChild(thickToolButton);
 
-const stickers = ["😀", "⭐", "❤️"];
+const stickers = ["🎨", "✨", "💫", "🎉"];
 const stickerButtons = new Map<string, HTMLButtonElement>();
 
 const customStickerButton = document.createElement("button");
-customStickerButton.textContent = "+ Custom";
+customStickerButton.textContent = "+ Add Emoji";
 document.body.appendChild(customStickerButton);
 
 const exportButton = document.createElement("button");
@@ -184,14 +184,14 @@ class StickerCommand implements DisplayCommand {
   }
 }
 
-const THIN = 2;
-const THICK = 6;
+const THIN = 3;
+const THICK = 10;
 let currentThickness = THIN;
 
 type ToolMode = "marker" | "sticker";
 let currentToolMode: ToolMode = "marker";
-let currentSticker = "⭐";
-const STICKER_FONT_PX = 28;
+let currentSticker = "✨";
+const STICKER_FONT_PX = 32;
 
 function updateToolSelection() {
   const isMarker = currentToolMode === "marker";
@@ -277,7 +277,7 @@ thickToolButton.addEventListener("click", () => {
 });
 
 customStickerButton.addEventListener("click", () => {
-  const text = prompt("Custom sticker text", "🧽");
+  const text = prompt("Enter emoji or text for your sticker:", "🎭");
   if (text === null || text === "") return;
   if (stickers.includes(text)) return;
   stickers.push(text);
