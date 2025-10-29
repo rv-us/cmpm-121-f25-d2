@@ -54,10 +54,12 @@ interface DisplayCommand {
 class MarkerStroke implements DisplayCommand {
   private readonly points: Point[] = [];
   private readonly thickness: number;
+  private readonly color: string;
 
-  constructor(start: Point, thickness: number) {
+  constructor(start: Point, thickness: number, color: string) {
     this.points.push(start);
     this.thickness = thickness;
+    this.color = color;
   }
 
   drag(next: Point): void {
@@ -68,7 +70,7 @@ class MarkerStroke implements DisplayCommand {
     if (this.points.length === 0) return;
     ctx.lineWidth = this.thickness;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "black";
+    ctx.strokeStyle = this.color;
 
     ctx.beginPath();
     const [first, ...rest] = this.points;
@@ -95,10 +97,12 @@ interface ToolPreview {
 class MarkerPreview implements ToolPreview {
   private center: Point;
   private thickness: number;
+  private color: string;
 
-  constructor(center: Point, thickness: number) {
+  constructor(center: Point, thickness: number, color: string) {
     this.center = center;
     this.thickness = thickness;
+    this.color = color;
   }
 
   setPosition(center: Point) {
@@ -109,10 +113,14 @@ class MarkerPreview implements ToolPreview {
     this.thickness = thickness;
   }
 
+  setColor(color: string) {
+    this.color = color;
+  }
+
   draw(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.globalAlpha = 0.6;
-    ctx.strokeStyle = "#666";
+    ctx.strokeStyle = this.color;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(this.center.x, this.center.y, this.thickness / 2, 0, Math.PI * 2);
@@ -187,6 +195,13 @@ class StickerCommand implements DisplayCommand {
 const THIN = 3;
 const THICK = 10;
 let currentThickness = THIN;
+
+function generateRandomColor(): string {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsl(${hue}, 70%, 50%)`;
+}
+
+let currentMarkerColor = "#000000";
 
 type ToolMode = "marker" | "sticker";
 let currentToolMode: ToolMode = "marker";
@@ -263,7 +278,11 @@ function render() {
 thinToolButton.addEventListener("click", () => {
   currentToolMode = "marker";
   currentThickness = THIN;
-  if (preview instanceof MarkerPreview) preview.setThickness(currentThickness);
+  currentMarkerColor = generateRandomColor();
+  if (preview instanceof MarkerPreview) {
+    preview.setThickness(currentThickness);
+    preview.setColor(currentMarkerColor);
+  }
   updateToolSelection();
   dispatchToolMoved();
 });
@@ -271,7 +290,11 @@ thinToolButton.addEventListener("click", () => {
 thickToolButton.addEventListener("click", () => {
   currentToolMode = "marker";
   currentThickness = THICK;
-  if (preview instanceof MarkerPreview) preview.setThickness(currentThickness);
+  currentMarkerColor = generateRandomColor();
+  if (preview instanceof MarkerPreview) {
+    preview.setThickness(currentThickness);
+    preview.setColor(currentMarkerColor);
+  }
   updateToolSelection();
   dispatchToolMoved();
 });
@@ -313,7 +336,7 @@ canvas.addEventListener("mousedown", (event) => {
   redoStack.length = 0;
   preview = null; // hide preview while drawing
   if (currentToolMode === "marker") {
-    const stroke = new MarkerStroke(startPoint, currentThickness);
+    const stroke = new MarkerStroke(startPoint, currentThickness, currentMarkerColor);
     strokes.push(stroke);
   } else {
     const sticker = new StickerCommand(
@@ -355,10 +378,11 @@ canvas.addEventListener("mousemove", (event) => {
   } else {
     if (currentToolMode === "marker") {
       if (!(preview instanceof MarkerPreview)) {
-        preview = new MarkerPreview(point, currentThickness);
+        preview = new MarkerPreview(point, currentThickness, currentMarkerColor);
       } else {
         preview.setPosition(point);
         preview.setThickness(currentThickness);
+        preview.setColor(currentMarkerColor);
       }
     } else {
       if (!(preview instanceof StickerPreview)) {
