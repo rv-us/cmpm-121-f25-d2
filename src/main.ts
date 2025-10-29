@@ -200,7 +200,10 @@ function updateToolSelection() {
     isMarker && currentThickness === THICK,
   );
   for (const [emoji, button] of stickerButtons) {
-    button.classList.toggle("selectedTool", !isMarker && currentSticker === emoji);
+    button.classList.toggle(
+      "selectedTool",
+      !isMarker && currentSticker === emoji,
+    );
   }
 }
 
