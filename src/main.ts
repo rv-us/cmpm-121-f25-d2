@@ -336,7 +336,11 @@ canvas.addEventListener("mousedown", (event) => {
   redoStack.length = 0;
   preview = null; // hide preview while drawing
   if (currentToolMode === "marker") {
-    const stroke = new MarkerStroke(startPoint, currentThickness, currentMarkerColor);
+    const stroke = new MarkerStroke(
+      startPoint,
+      currentThickness,
+      currentMarkerColor,
+    );
     strokes.push(stroke);
   } else {
     const sticker = new StickerCommand(
@@ -378,7 +382,11 @@ canvas.addEventListener("mousemove", (event) => {
   } else {
     if (currentToolMode === "marker") {
       if (!(preview instanceof MarkerPreview)) {
-        preview = new MarkerPreview(point, currentThickness, currentMarkerColor);
+        preview = new MarkerPreview(
+          point,
+          currentThickness,
+          currentMarkerColor,
+        );
       } else {
         preview.setPosition(point);
         preview.setThickness(currentThickness);
